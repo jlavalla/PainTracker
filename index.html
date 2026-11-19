@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Pain Tracker</title>
+  <meta name="description" content="Log aches and pains with a tap and see how often they happen.">
+  <meta name="theme-color" content="#2a78d6">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Pains">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1>Pain Tracker</h1>
+    <nav class="tabs" role="tablist">
+      <button role="tab" id="tab-pains" aria-selected="true" data-view="pains">Pains</button>
+      <button role="tab" id="tab-history" aria-selected="false" data-view="history">History</button>
+      <button role="tab" id="tab-data" aria-selected="false" data-view="data">Data</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- PAINS -->
+    <section id="view-pains" class="view" role="tabpanel" aria-labelledby="tab-pains">
+      <form id="add-form" class="card add-form" autocomplete="off">
+        <label class="sr-only" for="add-name">Pain name</label>
+        <input id="add-name" type="text" placeholder="New pain, e.g. Left knee ache" maxlength="60" required>
+        <div class="add-row">
+          <label class="sr-only" for="add-area">Body area</label>
+          <select id="add-area"></select>
+          <button type="submit" class="btn primary">Add &amp; log</button>
+        </div>
+      </form>
+
+      <div class="filter-row">
+        <label class="sr-only" for="area-filter">Filter by body area</label>
+        <select id="area-filter"></select>
+        <label class="sr-only" for="sort-by">Sort</label>
+        <select id="sort-by">
+          <option value="recent">Most recent</option>
+          <option value="count">Most frequent</option>
+          <option value="name">A–Z</option>
+        </select>
+      </div>
+
+      <p class="hint">Tap a pain to log another instance. Use ⋯ for details, history, and edits.</p>
+      <ul id="pain-list" class="pain-list"></ul>
+      <p id="empty-pains" class="empty" hidden>No pains yet. Add one above.</p>
+    </section>
+
+    <!-- HISTORY -->
+    <section id="view-history" class="view" role="tabpanel" aria-labelledby="tab-history" hidden>
+      <div class="filter-row">
+        <label class="sr-only" for="hist-pain">Pain</label>
+        <select id="hist-pain"></select>
+        <div class="seg" role="group" aria-label="Range">
+          <button type="button" data-range="week" aria-pressed="true">Weeks</button>
+          <button type="button" data-range="month" aria-pressed="false">Months</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="stat-row" id="hist-stats"></div>
+        <div id="hist-chart" class="chart"></div>
+        <button type="button" class="link-btn" id="hist-table-toggle">Show as table</button>
+        <div id="hist-table" hidden></div>
+      </div>
+      <h2 class="section-title">Recent entries</h2>
+      <ul id="hist-entries" class="entry-list"></ul>
+      <p id="empty-hist" class="empty" hidden>Nothing logged yet.</p>
+    </section>
+
+    <!-- DATA -->
+    <section id="view-data" class="view" role="tabpanel" aria-labelledby="tab-data" hidden>
+      <div class="card stack">
+        <h2>Export</h2>
+        <p class="muted">Download every logged instance as a spreadsheet-friendly CSV, for example to share with a doctor.</p>
+        <button type="button" class="btn primary" id="export-csv">Export CSV</button>
+      </div>
+      <div class="card stack">
+        <h2>Backup</h2>
+        <p class="muted">Your data lives only in this browser on this device. Save a backup file now and then, and restore it here or on another device.</p>
+        <div class="btn-row">
+          <button type="button" class="btn" id="export-json">Save backup</button>
+          <label class="btn" for="import-json">Restore backup</label>
+          <input type="file" id="import-json" accept="application/json,.json" hidden>
+        </div>
+      </div>
+      <div class="card stack">
+        <h2>Body areas</h2>
+        <p class="muted">Add your own areas to the list.</p>
+        <form id="area-form" class="add-row">
+          <label class="sr-only" for="new-area">New body area</label>
+          <input id="new-area" type="text" placeholder="e.g. Jaw" maxlength="30" required>
+          <button type="submit" class="btn">Add</button>
+        </form>
+        <ul id="custom-areas" class="chip-list"></ul>
+      </div>
+      <div class="card stack danger-zone">
+        <h2>Reset</h2>
+        <button type="button" class="btn danger" id="wipe">Delete all data</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Detail sheet -->
+  <dialog id="detail" class="sheet" aria-labelledby="detail-title">
+    <div class="sheet-head">
+      <h2 id="detail-title"></h2>
+      <button type="button" class="icon-btn" id="detail-close" aria-label="Close">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="stat-row" id="detail-stats"></div>
+
+      <div class="btn-row">
+        <button type="button" class="btn primary" id="detail-log">Log now</button>
+        <button type="button" class="btn" id="detail-backdate-toggle">Log earlier time…</button>
+      </div>
+      <form id="backdate-form" class="add-row" hidden>
+        <label class="sr-only" for="backdate">When</label>
+        <input type="datetime-local" id="backdate" required>
+        <button type="submit" class="btn">Save</button>
+      </form>
+
+      <p class="chart-title">Instances per week, last 12 weeks</p>
+      <div id="detail-chart" class="chart"></div>
+
+      <h3 class="section-title">Entries</h3>
+      <ul id="detail-entries" class="entry-list"></ul>
+
+      <details class="edit-box">
+        <summary>Edit or delete this pain</summary>
+        <form id="edit-form" class="stack">
+          <label>Name <input id="edit-name" type="text" maxlength="60" required></label>
+          <label>Body area <select id="edit-area"></select></label>
+          <div class="btn-row">
+            <button type="submit" class="btn primary">Save changes</button>
+            <button type="button" class="btn danger" id="delete-pain">Delete pain</button>
+          </div>
+        </form>
+      </details>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden>
+    <span id="toast-msg"></span>
+    <button type="button" id="toast-undo">Undo</button>
+  </div>
+  <div id="tooltip" class="tooltip" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
