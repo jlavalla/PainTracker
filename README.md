@@ -6,6 +6,7 @@ A simple, phone-first web app for tracking aches and pains.
 - **Tap a pain** in the list to log another instance. Each tap records the date and time, and the count goes up.
 - **Undo** any action from the toast that appears at the bottom of the screen.
 - **⋯ Details**: see stats and a weekly chart, log an instance at an earlier time, delete single entries, or rename, re-categorize, or delete the pain.
+- **Day**: see what you logged on any day. Jump to Today or Yesterday, step back and forth with ‹ ›, or pick a date. It shows a count per pain and a timeline of times.
 - **History**: weekly or monthly charts for all pains or one pain, plus a table view and recent entries.
 - **Data**: export every entry to CSV (for example, to share with a doctor), save or restore a JSON backup, add custom body areas, or reset.
 

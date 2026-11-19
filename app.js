@@ -173,6 +173,7 @@ let openPainId = null;
 function render() {
   renderAreaSelects();
   renderPainList();
+  if (currentView === 'day') renderDay();
   if (currentView === 'history') renderHistory();
   if (currentView === 'data') renderData();
   if (openPainId) renderDetail();
@@ -370,6 +371,68 @@ function renderHistory() {
   $('#empty-hist').hidden = entries.length > 0;
 }
 
+/* ---- Day view ---- */
+const pad2 = n => String(n).padStart(2, '0');
+const dayKey = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+function parseDayKey(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+function shiftDay(key, delta) {
+  const d = parseDayKey(key); d.setDate(d.getDate() + delta); return dayKey(d);
+}
+const todayKey = () => dayKey(new Date());
+let selectedDay = todayKey();
+
+function renderDay() {
+  const today = todayKey();
+  if (selectedDay > today) selectedDay = today;
+  const start = parseDayKey(selectedDay);
+  const end = parseDayKey(shiftDay(selectedDay, 1));
+  const entries = state.entries
+    .filter(e => e.ts >= start.getTime() && e.ts < end.getTime() && getPain(e.painId))
+    .sort((a, b) => a.ts - b.ts);
+
+  $('#day-date').value = selectedDay;
+  $('#day-date').max = today;
+  $('#day-next').disabled = selectedDay >= today;
+  const yesterday = shiftDay(today, -1);
+  for (const b of document.querySelectorAll('.day-quick button')) {
+    b.setAttribute('aria-pressed', selectedDay === (b.dataset.offset === '0' ? today : yesterday));
+  }
+  const full = start.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: start.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
+  $('#day-title').textContent = selectedDay === today ? `Today · ${full}` : selectedDay === yesterday ? `Yesterday · ${full}` : full;
+
+  // Per-pain counts for the day, most frequent first
+  const byPain = new Map();
+  for (const e of entries) byPain.set(e.painId, (byPain.get(e.painId) || 0) + 1);
+  const rows = [...byPain].sort((a, b) => b[1] - a[1] || getPain(a[0]).name.localeCompare(getPain(b[0]).name));
+  $('#day-summary').textContent = `${entries.length} ${entries.length === 1 ? 'instance' : 'instances'} · ${rows.length} ${rows.length === 1 ? 'pain' : 'different pains'}`;
+  $('#day-pains').replaceChildren(...rows.map(([id, n]) => {
+    const p = getPain(id);
+    return el('li', {},
+      el('span', { class: 'count' }, String(n)),
+      el('span', { class: 'pain-text' },
+        el('span', { class: 'pain-name' }, p.name),
+        el('span', { class: 'pain-meta' }, el('span', { class: 'area-tag' }, p.area)),
+      ),
+    );
+  }));
+  const timeOnly = ts => new Date(ts).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  $('#day-entries').replaceChildren(...entries.map(e => {
+    const p = getPain(e.painId);
+    return el('li', {},
+      el('div', {},
+        el('div', { class: 'when' }, timeOnly(e.ts)),
+        el('div', { class: 'sub' }, `${p.name} · ${p.area}`),
+      ),
+      el('button', { class: 'del', type: 'button', 'aria-label': `Delete ${p.name} at ${timeOnly(e.ts)}`, onclick: () => deleteEntry(e.id) }, '✕'),
+    );
+  }));
+  $('#day-body').hidden = entries.length === 0;
+  $('#empty-day').hidden = entries.length > 0;
+}
+
 function renderData() {
   $('#custom-areas').replaceChildren(...state.areas.map(a => el('li', {}, a,
     el('button', { type: 'button', 'aria-label': `Remove ${a}`, onclick: () => {
@@ -485,6 +548,15 @@ $('#add-form').addEventListener('submit', e => {
 });
 $('#area-filter').addEventListener('change', renderPainList);
 $('#sort-by').addEventListener('change', renderPainList);
+
+$('#day-prev').addEventListener('click', () => { selectedDay = shiftDay(selectedDay, -1); renderDay(); });
+$('#day-next').addEventListener('click', () => { selectedDay = shiftDay(selectedDay, 1); renderDay(); });
+$('#day-date').addEventListener('change', e => {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) { selectedDay = e.target.value; renderDay(); }
+});
+document.querySelectorAll('.day-quick button').forEach(b => b.addEventListener('click', () => {
+  selectedDay = shiftDay(todayKey(), -Number(b.dataset.offset)); renderDay();
+}));
 
 $('#hist-pain').addEventListener('change', renderHistory);
 document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
